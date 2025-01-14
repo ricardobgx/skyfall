@@ -1,0 +1,11 @@
+server:
+  port: ${TASKS_API_HTTP_PORT}
+
+spring:
+  application:
+    name: tasks-api
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${TASKS_API_OAUTH2_JWT_ISSUER_URL}

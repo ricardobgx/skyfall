@@ -1,0 +1,34 @@
+server:
+  port: ${AUTH_MIDDLEWARE_HTTP_PORT}
+
+spring:
+  application:
+    name: auth-middleware
+  cloud:
+    gateway:
+      routes:
+        - id: tasks-api
+          uri: ${TASKS_API_URL}
+          predicates:
+            - Path=/api/**
+          filters:
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - TokenRelay=
+            - SaveSession
+            - StripPrefix=1
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${AUTH_MIDDLEWARE_OAUTH2_JWK_SET_URL}
+      client:
+        provider:
+          keycloak:
+            issuer-uri: ${AUTH_MIDDLEWARE_OAUTH2_JWT_ISSUER_URL}
+        registration:
+          keycloak:
+            provider: keycloak
+            authorization-grant-type: authorization_code
+            client-id: ${AUTH_MIDDLEWARE_OPENID_CLIENT_ID}
+            client-secret: ${AUTH_MIDDLEWARE_OPENID_CLIENT_SECRET}
+            scope: openid,profile,email,offline_access
