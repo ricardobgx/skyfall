@@ -1,0 +1,13 @@
+services:
+  tasks-api:
+    container_name: skyfall-tasks-api
+    build: .
+    image: ricardobgx/skyfall-tasks-api
+    environment:
+      - SKYFALL_TASKS_API_HTTP_PORT=${SKYFALL_TASKS_API_HTTP_PORT}
+      - SKYFALL_TASKS_API_OAUTH2_JWT_ISSUER_URL=${SKYFALL_TASKS_API_OAUTH2_JWT_ISSUER_URL}
+    ports:
+      - '${SKYFALL_TASKS_API_HTTP_PORT}:${SKYFALL_TASKS_API_HTTP_PORT}'
+    networks:
+      - skyfall-network
+    restart: always

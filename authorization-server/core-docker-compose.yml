@@ -1,0 +1,30 @@
+services:
+  authorization-server:
+    container_name: skyfall-authorization-server
+    build: .
+    image: ricardobgx/skyfall-authorization-server
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${SKYFALL_AUTHORIZATION_SERVER_ADMIN_USER}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${SKYFALL_AUTHORIZATION_SERVER_ADMIN_PASS}
+      - KC_HTTP_PORT=${SKYFALL_AUTHORIZATION_SERVER_HTTP_PORT}
+      - KC_HOSTNAME_URL=${SKYFALL_AUTHORIZATION_SERVER_URL}
+      - KC_HOSTNAME_ADMIN_URL=${SKYFALL_AUTHORIZATION_SERVER_URL}
+      - KC_HOSTNAME_STRICT_BACKCHANNEL=true
+      - KC_HTTP_RELATIVE_PATH=/
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
+    volumes:
+      - 'authorization-server-data:/opt/keycloak/data'
+    ports:
+      - '${SKYFALL_AUTHORIZATION_SERVER_HTTP_PORT}:${SKYFALL_AUTHORIZATION_SERVER_HTTP_PORT}'
+    networks:
+      - skyfall-network
+    restart: always
+
+volumes:
+  authorization-server-data:
+    name: skyfall-authorization-server-data
