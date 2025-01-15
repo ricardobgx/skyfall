@@ -32,3 +32,32 @@ spring:
             client-id: ${SKYFALL_AUTH_MIDDLEWARE_OPENID_CLIENT_ID}
             client-secret: ${SKYFALL_AUTH_MIDDLEWARE_OPENID_CLIENT_SECRET}
             scope: openid,profile,email,offline_access
+
+skyfall:
+  auth-middleware:
+    security:
+      cors:
+        '[/**]':
+          allowed-origins:
+            - "${SKYFALL_WEB_BASE_URL}"
+          allowed-methods:
+            - "*"
+          allowed-headers:
+            - "*"
+          allow-credentials: true
+      oauth2:
+        client:
+          public-routes:
+            - "/login/**"
+            - "/oauth2/**"
+            - "/favicon.ico"
+          private-routes:
+            - "/api/**"
+            - "/logout"
+            - "/me"
+        resource-server:
+          public-routes:
+            - "/login-options"
+            - "/error"
+            - "/actuator/health/readiness"
+            - "/actuator/health/liveness"

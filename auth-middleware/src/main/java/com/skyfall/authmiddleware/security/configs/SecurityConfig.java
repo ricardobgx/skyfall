@@ -1,21 +1,30 @@
 package com.skyfall.authmiddleware.security.configs;
 
+import com.skyfall.authmiddleware.security.interfaces.AuthoritiesConverter;
+import com.skyfall.authmiddleware.security.pojos.AuthMiddlewareSecurityOAuth2ClientProperties;
+import com.skyfall.authmiddleware.security.pojos.AuthMiddlewareSecurityProperties;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.OidcBackChannelServerLogoutHandler;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
+import org.springframework.security.oauth2.client.oidc.server.session.ReactiveOidcSessionRegistry;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
+import org.springframework.security.web.server.util.matcher.OrServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -23,15 +32,20 @@ import java.util.stream.Collectors;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
+@EnableWebFluxSecurity
 public class SecurityConfig {
     @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
     private String jwkSetUri;
 
-    interface AuthoritiesConverter extends Converter<Map<String, Object>, Collection<GrantedAuthority>> {
+    @Bean
+    @ConfigurationProperties(prefix = "skyfall.auth-middleware.security")
+    public AuthMiddlewareSecurityProperties authMiddlewareSecurityProperties() {
+        return new AuthMiddlewareSecurityProperties();
     }
 
     @Bean
-    AuthoritiesConverter realmRolesAuthoritiesConverter() {
+    @SuppressWarnings("unchecked")
+    public AuthoritiesConverter realmRolesAuthoritiesConverter() {
         return claims -> {
             var realmAccess = Optional.ofNullable((Map<String, Object>) claims.get("realm_access"));
 
@@ -59,24 +73,38 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityWebFilterChain clientSecurityFilterChain(ServerHttpSecurity httpSecurity) {
+    public SecurityWebFilterChain clientSecurityFilterChain(
+            ServerHttpSecurity httpSecurity,
+            AuthMiddlewareSecurityProperties securityProperties
+    ) {
+        AuthMiddlewareSecurityOAuth2ClientProperties oauth2ClientProperties = securityProperties
+                .getOauth2()
+                .getClient();
+
+        List<String> publicRoutes = oauth2ClientProperties.getPublicRoutes();
+        List<String> privateRoutes = oauth2ClientProperties.getPrivateRoutes();
+
+        List<String> oauth2ClientRoutes = new ArrayList<>(publicRoutes);
+
+        oauth2ClientRoutes.addAll(privateRoutes);
+
+        ServerWebExchangeMatcher[] securityMatchers = oauth2ClientRoutes.stream()
+                .map(PathPatternParserServerWebExchangeMatcher::new)
+                .toArray(PathPatternParserServerWebExchangeMatcher[]::new);
+
         return httpSecurity
+                .securityMatcher(new OrServerWebExchangeMatcher(securityMatchers))
+                .authorizeExchange(exchange -> exchange
+                        .pathMatchers(publicRoutes.toArray(String[]::new)).permitAll()
+                        .anyExchange().authenticated())
                 .oauth2Login(withDefaults())
                 .logout(logout -> logout
                         .logoutUrl("{baseUrl}/")
-                        .logoutSuccessHandler(((exchange, authentication) -> {
-                             ServerHttpResponse response = exchange
-                                     .getExchange()
-                                     .getResponse();
-
-                             response.setStatusCode(HttpStatusCode.valueOf(201));
-
-                             return response.setComplete();
-                        })))
-                .authorizeExchange(exchange -> exchange
-                        .pathMatchers("/api/**", "/login/**", "/oauth2/**", "/favicon.ico").permitAll()
-                        .pathMatchers("/logout").authenticated()
-                        .anyExchange().denyAll())
+                        .logoutSuccessHandler(((exchange, authentication) -> exchange
+                                .getExchange()
+                                .getResponse()
+                                .setComplete()))
+                )
                 .build();
     }
 
@@ -86,18 +114,22 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityWebFilterChain resourceServerSecurityFilterChain(ServerHttpSecurity httpSecurity) {
+    public SecurityWebFilterChain resourceServerSecurityFilterChain(
+            ServerHttpSecurity httpSecurity,
+            AuthMiddlewareSecurityProperties securityProperties
+    ) {
+        List<String> publicRoutes = securityProperties
+                .getOauth2()
+                .getResourceServer()
+                .getPublicRoutes();
+
         return httpSecurity
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> withDefaults()))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
-                .authorizeExchange(requests -> requests
-                        .pathMatchers(
-                                "/login-options",
-                                "/error",
-                                "/actuator/health/readiness",
-                                "/actuator/health/liveness"
-                        ).permitAll())
+                .authorizeExchange(exchange -> exchange
+                        .pathMatchers(publicRoutes.toArray(String[]::new)).permitAll()
+                        .anyExchange().denyAll())
                 .build();
     }
 }

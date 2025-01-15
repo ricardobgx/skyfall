@@ -15,6 +15,7 @@ You will need to define the environment variables below on your computer path or
 
 - **SKYFALL_AUTH_MIDDLEWARE_HTTP_PORT:** Server port (e.g. 4101);
 - **SKYFALL_TASKS_API_URL:** Tasks API URL (it will be used to forward requests to Tasks API);
+- **SKYFALL_WEB_BASE_URL**: Web interface base URL;
 - **SKYFALL_AUTH_MIDDLEWARE_OAUTH2_JWK_SET_URL:** JWT public keys URL (for example in Keycloak: http://192.168.2.0:4001/realms/skyfall/protocol/openid-connect/certs);
 - **SKYFALL_AUTH_MIDDLEWARE_OAUTH2_JWT_ISSUER_URL:** JWT issuer URL (for example in Keycloak: http://192.168.2.0:4001/realms/skyfall);
 - **SKYFALL_AUTH_MIDDLEWARE_OPENID_CLIENT_ID:** Confidential client ID (you can create a client of this type in Keycloak enabling **Client authentication** and remains only **Standard flow** checked);
