@@ -16,6 +16,10 @@ spring:
             - TokenRelay=
             - SaveSession
             - StripPrefix=1
+        - id: web
+          uri: ${SKYFALL_WEB_BASE_URL}
+          predicates:
+            - Path=/web/**
   security:
     oauth2:
       resourceserver:
@@ -57,6 +61,7 @@ skyfall:
             - "/me"
         resource-server:
           public-routes:
+            - "/web/**"
             - "/login-options"
             - "/error"
             - "/actuator/health/readiness"
